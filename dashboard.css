@@ -1,0 +1,124 @@
+/* BODY */
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #f3f4f6;
+    margin: 0;
+    padding: 0;
+}
+
+/* WHITE MAIN CONTAINER (matches screenshot) */
+.dashboard-container {
+    max-width: 900px;
+    background: white;
+    margin: 3rem auto;
+    padding: 2.5rem;
+    border-radius: 1.5rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+/* HEADER */
+.profile-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.profile-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+.profile-info img {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+}
+.logout-btn {
+    background: white;
+    border: 2px solid #e5e7eb;
+    padding: 0.6rem 1.2rem;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    color: #1f2937;
+}
+
+/* BALANCE CARD (matches red → peach gradient) */
+.balance-card {
+    background: linear-gradient(90deg, #6a0f1c, #e1a36f);
+    padding: 3rem;
+    border-radius: 1.5rem;
+    color: white;
+    text-align: center;
+    font-weight: bold;
+}
+.balance-card p {
+    margin: 0;
+    font-size: 1.15rem;
+}
+.balance-card h1 {
+    margin-top: 0.6rem;
+    font-size: 2.5rem;
+}
+
+/* BIG BUTTONS */
+.action-row {
+    display: flex;
+    gap: 1rem;
+}
+.big-btn {
+    flex: 1;
+    padding: 1rem;
+    border-radius: 1rem;
+    text-align: center;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+}
+.yellow-btn {
+    background-color: #ffd54f;
+    color: #6a0f1c;
+}
+.white-btn {
+    background-color: white;
+    color: #1f2937;
+    border: 2px solid #e5e7eb;
+}
+
+/* INFO ROW */
+.bottom-row {
+    display: flex;
+    gap: 1rem;
+}
+.small-card {
+    flex: 1;
+    background-color: white;
+    border: 2px solid #e5e7eb;
+    padding: 1.2rem;
+    border-radius: 1rem;
+}
+.small-card p {
+    margin: 0.3rem 0;
+}
+
+/* FULL WIDTH PROFILE BUTTON */
+.profile-btn {
+    background-color: #e5e5e5;
+    padding: 1rem;
+    border-radius: 1rem;
+    text-align: center;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+    .action-row,
+    .bottom-row {
+        flex-direction: column;
+    }
+}
