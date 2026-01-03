@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="../styles/dashboard.css">
+</head>
+<body>
+
+<div class="dashboard-container">
+
+    <!-- HEADER -->
+    <div class="profile-card">
+        <div class="profile-info">
+            <img src="img/user.png" alt="User Icon">
+            <h2>Welcome, <span id="userName">User</span></h2>
+        </div>
+        <button class="logout-btn" onclick="logout()">Log Out</button>
+    </div>
+
+    <!-- CURRENT BALANCE -->
+    <div class="balance-card">
+        <p>Your Balance:</p>
+        <h1 id="balanceDisplay">₱0.00</h1>
+    </div>
+
+    <!-- BIG ACTION BUTTONS -->
+    <div class="action-row">
+        <button class="big-btn yellow-btn" onclick="goTo('cashin.php')">Cash In</button>
+        <button class="big-btn white-btn" onclick="goTo('transaction.php')">View Transactions</button>
+    </div>
+
+    <!-- INFO CARDS -->
+    <div class="bottom-row">
+        <div class="small-card">
+            <p><strong>Last Transaction:</strong></p>
+            <p id="lastTransaction">—</p>
+        </div>
+
+        <div class="small-card">
+            <p><strong>This Week’s Spending:</strong></p>
+            <p id="weekSpending">₱0</p>
+        </div>
+    </div>
+
+    <!-- FULL WIDTH BUTTON -->
+    <button class="profile-btn" onclick="goTo('profile.php')" style="width: 100%; margin-top: 1rem;">
+        Go to Profile
+    </button>
+
+</div>
+
+<script>
+    function goTo(page) {
+        window.location.href = page;
+    }
+    function logout() {
+        window.location.href = "index.php";
+    }
+</script>
+
+</body>
+</html>

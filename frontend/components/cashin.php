@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cash In</title>
+    <link rel="stylesheet" href="../styles/cashin.css"> 
+</head>
+<body>
+    <div class="card-container">
+        <header class="card-header">
+            <span class="back-arrow">&lt;</span>
+            <h1>Cash In</h1>
+        </header>
+        
+        <main class="card-content">
+            <div class="qr-section">
+                <div class="qr-code-placeholder">
+                    <img src="img/qrCodeSample.png" alt="QR Code">
+                </div>
+                
+                <ol class="instructions">
+                    <li>Open Gcash App</li>
+                    <li>Tap Pay QR</li>
+                    <li>Scan or upload QR</li>
+                    <li>Enter Amount + your School ID in message</li>
+                </ol>
+            </div>
+            
+            <div class="input-container">
+                <input type="text" placeholder="Reference Number (Optional)" class="reference-input">
+            </div>
+            
+            
+            <button class="confirm-button" id="confirmBtn">Confirm Cash In</button>
+            
+            <div class="success-message" id="successMessage"></div>
+
+        </main>
+    </div>
+
+  
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const confirmBtn = document.getElementById('confirmBtn');
+            const successMessage = document.getElementById('successMessage');
+
+            confirmBtn.addEventListener('click', function() {
+                successMessage.textContent = "✅ Cash In Successful! Your transaction is now pending approval.";
+                successMessage.style.display = "block";
+
+                
+                const input = document.querySelector('.reference-input');
+                if (input) input.value = '';
+            });
+
+            // ⭐ Added Back Arrow Function (ONLY addition)
+            const backArrow = document.querySelector('.back-arrow');
+            backArrow.addEventListener('click', () => {
+                window.location.href = 'dashboard.php';
+            });
+        });
+    </script>
+</body>
+</html>
