@@ -1,0 +1,40 @@
+<?php
+/**
+ * PayMongo Configuration Template
+ * Copy this to PayMongoConfig.php and fill in your API keys
+ */
+
+class PayMongoConfig {
+    
+    // Get API keys from https://dashboard.paymongo.com/developers/api-keys
+    // Use TEST keys for development, LIVE keys for production
+    const PUBLIC_KEY = 'pk_test_YOUR_PUBLIC_KEY_HERE';
+    const SECRET_KEY = 'sk_test_YOUR_SECRET_KEY_HERE';
+    
+    // Webhook secret (get from PayMongo webhook settings)
+    const WEBHOOK_SECRET = 'whsec_YOUR_WEBHOOK_SECRET_HERE';
+    
+    // PayMongo API endpoint
+    const API_URL = 'https://api.paymongo.com/v1';
+    
+    // Your domain URLs (UPDATE THESE!)
+    const SUCCESS_URL = 'https://yourdomain.com/frontend/components/dashboard.php?payment=success';
+    const CANCEL_URL = 'https://yourdomain.com/frontend/components/cashin.php?payment=cancelled';
+    const WEBHOOK_URL = 'https://yourdomain.com/backend/webhooks/paymongo_webhook.php';
+    
+    /**
+     * Get authorization header for API requests
+     */
+    public static function getAuthHeader() {
+        return 'Basic ' . base64_encode(self::SECRET_KEY . ':');
+    }
+    
+    /**
+     * Verify webhook signature
+     */
+    public static function verifyWebhookSignature($payload, $signature) {
+        $expectedSignature = hash_hmac('sha256', $payload, self::WEBHOOK_SECRET);
+        return hash_equals($expectedSignature, $signature);
+    }
+}
+?>

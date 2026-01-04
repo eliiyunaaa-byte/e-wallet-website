@@ -1,0 +1,29 @@
+# Sensitive Configuration Files
+backend/dbConfiguration/NotificationConfig.php
+backend/dbConfiguration/PayMongoConfig.php
+backend/dbConfiguration/Database.php
+
+# Environment files
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+backend/webhooks/webhook_log.txt
+
+# Vendor
+vendor/
+node_modules/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp

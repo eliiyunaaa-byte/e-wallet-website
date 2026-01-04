@@ -6,6 +6,7 @@
     <title>Siena College of Taytay - Log In</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="../styles/index.css">
+    <script src="api.js"></script>
 </head>
 <body class="min-h-screen flex flex-col items-center justify-center p-4" style="background-image: url('img/schoolBackground.png'); background-size: cover; background-position: center; background-repeat: no-repeat;">
 
@@ -26,14 +27,15 @@
             Siena College of Taytay
         </h2>
 
-        <form action="verify.php" method="GET">
+        <form id="loginForm" onsubmit="handleLogin(event)">
             <div class="input-group">
                 <input type="text" name="school_id" id="school_id" placeholder="School ID" required>
                 <input type="password" name="password" id="password" placeholder="Password" required>
             </div>
 
             <div class="pt-4">
-                <button type="submit" class="login-btn">Log In</button>
+                <button type="submit" class="login-btn" id="loginBtn">Log In</button>
+                <p id="errorMsg" style="color: #dc2626; text-align: center; margin-top: 0.5rem; display: none;"></p>
             </div>
         </form>
 
@@ -42,6 +44,44 @@
         </p>
 
     </div>
+
+    <script>
+        // Check if already logged in
+        if (EWalletAPI.isLoggedIn()) {
+            window.location.href = 'dashboard.php';
+        }
+
+        // Handle login form submission
+        async function handleLogin(event) {
+            event.preventDefault();
+
+            const school_id = document.getElementById('school_id').value;
+            const password = document.getElementById('password').value;
+            const errorMsg = document.getElementById('errorMsg');
+            const loginBtn = document.getElementById('loginBtn');
+
+            // Show loading state
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Logging in...';
+
+            // Call API
+            const response = await EWalletAPI.login(school_id, password);
+
+            if (response.status === 'success') {
+                // Save session
+                EWalletAPI.saveSession(response.data);
+                
+                // Redirect to dashboard
+                window.location.href = 'dashboard.php';
+            } else {
+                // Show error
+                errorMsg.textContent = response.message;
+                errorMsg.style.display = 'block';
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Log In';
+            }
+        }
+    </script>
 
 </body>
 </html>

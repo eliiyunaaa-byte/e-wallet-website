@@ -7,9 +7,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="../styles/verify.css">
 </head>
-<body class="min-h-screen flex flex-col items-center justify-center p-4">
+<body class="min-h-screen flex flex-col items-center justify-center p-4" style="background-image: url('img/schoolBackground.png'); background-size: cover; background-position: center; background-repeat: no-repeat;">
 
-    <!-- School Logo -->
+   
     <div class="logo-card">
         <img
             src="img/schoolLogo.png"
@@ -19,7 +19,7 @@
         />
     </div>
 
-    <!-- Verification Form Card -->
+    
     <div class="login-card">
 
         <h2 class="login-title">
