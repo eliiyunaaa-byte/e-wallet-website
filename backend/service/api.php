@@ -17,6 +17,16 @@ error_reporting(E_ALL);
 ini_set('display_errors', 0); // Don't show errors in output
 ini_set('log_errors', 1);
 
+// Set error handler to catch fatal errors
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    http_response_code(500);
+    echo json_encode([
+        'status' => 'error',
+        'message' => 'Server error: ' . $errstr . ' in ' . basename($errfile) . ':' . $errline
+    ]);
+    exit;
+});
+
 $action = isset($_GET['action']) ? $_GET['action'] : '';
 
 // Include services
@@ -27,9 +37,7 @@ require_once __DIR__ . '/TransactionService.php';
 require_once __DIR__ . '/PayMongoService.php';
 
 // Get database connection
-try {
-    $conn = include __DIR__ . '/../dbConfiguration/Database.php';
-} catch (Exception $e) {
+if (!isset($conn) || !$conn) {
     http_response_code(500);
     echo json_encode([
         'status' => 'error',
@@ -77,27 +85,43 @@ switch($action) {
 // FUNCTION: Handle Login
 // ============================================
 function handleLogin($conn) {
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        http_response_code(400);
-        echo json_encode(['status' => 'error', 'message' => 'POST request required']);
-        return;
+    try {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'POST request required']);
+            return;
+        }
+
+        $input = file_get_contents("php://input");
+        $data = json_decode($input, true);
+        
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'Invalid JSON in request body']);
+            return;
+        }
+        
+        $school_id = $data['school_id'] ?? null;
+        $password = $data['password'] ?? null;
+
+        $auth = new AuthService($conn);
+        $result = $auth->login($school_id, $password);
+
+        if ($result['status'] === 'success') {
+            // Set session
+            $_SESSION['student_id'] = $result['data']['student_id'];
+            $_SESSION['school_id'] = $result['data']['school_id'];
+            $_SESSION['name'] = $result['data']['name'];
+        }
+
+        echo json_encode($result);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Server error: ' . $e->getMessage()
+        ]);
     }
-
-    $data = json_decode(file_get_contents("php://input"), true);
-    $school_id = $data['school_id'] ?? null;
-    $password = $data['password'] ?? null;
-
-    $auth = new AuthService($conn);
-    $result = $auth->login($school_id, $password);
-
-    if ($result['status'] === 'success') {
-        // Set session
-        $_SESSION['student_id'] = $result['data']['student_id'];
-        $_SESSION['school_id'] = $result['data']['school_id'];
-        $_SESSION['name'] = $result['data']['name'];
-    }
-
-    echo json_encode($result);
 }
 
 // ============================================
