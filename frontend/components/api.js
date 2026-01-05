@@ -165,6 +165,35 @@ class EWalletAPI {
     static isLoggedIn() {
         return !!localStorage.getItem('student_id');
     }
+
+    /**
+     * Request password reset (send OTP)
+     */
+    static async requestPasswordReset(schoolId) {
+        return await this.call('request_password_reset', 'POST', {
+            school_id: schoolId
+        });
+    }
+
+    /**
+     * Verify OTP
+     */
+    static async verifyOTP(schoolId, otp) {
+        return await this.call('verify_otp', 'POST', {
+            school_id: schoolId,
+            otp: otp
+        });
+    }
+
+    /**
+     * Reset password
+     */
+    static async resetPassword(schoolId, newPassword) {
+        return await this.call('reset_password', 'POST', {
+            school_id: schoolId,
+            new_password: newPassword
+        });
+    }
 }
 
 // Export for use in other files

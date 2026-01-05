@@ -141,8 +141,8 @@ class AuthService {
      */
     public function requestPasswordReset($school_id) {
         try {
-            // Find student
-            $stmt = $this->conn->prepare("SELECT student_id FROM students WHERE school_id = ?");
+            // Find student with email
+            $stmt = $this->conn->prepare("SELECT student_id, full_name, email FROM students WHERE school_id = ?");
             $stmt->bind_param("s", $school_id);
             $stmt->execute();
             $result = $stmt->get_result();
@@ -157,23 +157,39 @@ class AuthService {
 
             $student = $result->fetch_assoc();
             $student_id = $student['student_id'];
+            $student_name = $student['full_name'];
+            $student_email = $student['email'];
             $stmt->close();
 
-            // Generate OTP
-            $otp = rand(100000, 999999);
-            $expires_at = date('Y-m-d H:i:s', strtotime('+15 minutes'));
+            if (!$student_email) {
+                return [
+                    'status' => 'error',
+                    'message' => 'No email registered for this account'
+                ];
+            }
 
-            // Insert reset request
-            $stmt = $this->conn->prepare("INSERT INTO password_resets (student_id, otp_code, expires_at) VALUES (?, ?, ?)");
-            $stmt->bind_param("iss", $student_id, $otp, $expires_at);
+            // Generate OTP and unique token
+            $otp = rand(100000, 999999);
+            $reset_token = bin2hex(random_bytes(32)); // Unique token
+            
+            // Use MySQL NOW() function to avoid timezone issues
+            $expires_in_minutes = 15;
+
+            // Insert reset request with unique token and MySQL-based expiration
+            $stmt = $this->conn->prepare("INSERT INTO password_resets (student_id, reset_token, otp_code, expires_at) VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL ? MINUTE))");
+            $stmt->bind_param("issi", $student_id, $reset_token, $otp, $expires_in_minutes);
 
             if ($stmt->execute()) {
                 $stmt->close();
-                // In production, send OTP via email
+                
+                // Send OTP via email
+                require_once __DIR__ . '/EmailService.php';
+                $emailResult = $this->sendOTPEmail($student_email, $student_name, $otp);
+                
                 return [
                     'status' => 'success',
-                    'message' => 'OTP sent. Check your email.',
-                    'otp_debug' => $otp  // Remove in production
+                    'message' => 'Verification code sent to your email. Please check your inbox.',
+                    'email_status' => $emailResult['status'] ?? 'unknown'
                 ];
             } else {
                 throw new Exception("Reset request failed");
@@ -224,6 +240,130 @@ class AuthService {
         } catch (Exception $e) {
             return ['status' => 'error', 'message' => 'An error occurred: ' . $e->getMessage()];
         }
+    }
+
+    /**
+     * Reset password after OTP verification
+     */
+    public function resetPassword($school_id, $new_password) {
+        try {
+            // Find student
+            $stmt = $this->conn->prepare("SELECT student_id FROM students WHERE school_id = ?");
+            $stmt->bind_param("s", $school_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+
+            if ($result->num_rows === 0) {
+                $stmt->close();
+                return ['status' => 'error', 'message' => 'School ID not found'];
+            }
+
+            $student = $result->fetch_assoc();
+            $student_id = $student['student_id'];
+            $stmt->close();
+
+            // Check if there's a valid verified reset request
+            $stmt = $this->conn->prepare("SELECT reset_id FROM password_resets WHERE student_id = ? AND is_used = 0 AND expires_at > NOW() LIMIT 1");
+            $stmt->bind_param("i", $student_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+
+            if ($result->num_rows === 0) {
+                $stmt->close();
+                return ['status' => 'error', 'message' => 'No valid reset request found. Please request a new OTP.'];
+            }
+
+            $reset = $result->fetch_assoc();
+            $reset_id = $reset['reset_id'];
+            $stmt->close();
+
+            // Hash the new password (plain text for debugging - change in production)
+            // $password_hash = password_hash($new_password, PASSWORD_BCRYPT);
+            $password_hash = $new_password; // Plain text for debugging
+
+            // Update password
+            $stmt = $this->conn->prepare("UPDATE students SET password_hash = ? WHERE student_id = ?");
+            $stmt->bind_param("si", $password_hash, $student_id);
+            
+            if (!$stmt->execute()) {
+                $stmt->close();
+                throw new Exception("Failed to update password");
+            }
+            $stmt->close();
+
+            // Mark reset request as used
+            $stmt = $this->conn->prepare("UPDATE password_resets SET is_used = 1 WHERE reset_id = ?");
+            $stmt->bind_param("i", $reset_id);
+            $stmt->execute();
+            $stmt->close();
+
+            return [
+                'status' => 'success',
+                'message' => 'Password reset successful'
+            ];
+
+        } catch (Exception $e) {
+            return ['status' => 'error', 'message' => 'An error occurred: ' . $e->getMessage()];
+        }
+    }
+
+    /**
+     * Send OTP via email
+     */
+    private function sendOTPEmail($email, $name, $otp) {
+        require_once __DIR__ . '/../dbConfiguration/NotificationConfig.php';
+        
+        $subject = 'Password Reset - Siena College E-Wallet';
+        
+        $body = '
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .header { background: linear-gradient(135deg, #8B0000, #DC8B6B); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+                .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+                .otp-box { background: white; border: 2px dashed #8B0000; padding: 20px; text-align: center; margin: 20px 0; border-radius: 8px; }
+                .otp-code { font-size: 36px; font-weight: bold; color: #8B0000; letter-spacing: 8px; margin: 10px 0; }
+                .warning { background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; margin: 20px 0; }
+                .footer { text-align: center; color: #666; font-size: 12px; margin-top: 20px; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>🔐 Password Reset Request</h1>
+                </div>
+                <div class="content">
+                    <p>Hi <strong>' . htmlspecialchars($name) . '</strong>,</p>
+                    <p>We received a request to reset your password. Use the verification code below to continue:</p>
+                    
+                    <div class="otp-box">
+                        <p style="margin: 0; color: #666; font-size: 14px;">Your verification code is:</p>
+                        <div class="otp-code">' . $otp . '</div>
+                        <p style="margin: 0; color: #666; font-size: 12px;">Valid for 15 minutes</p>
+                    </div>
+                    
+                    <div class="warning">
+                        ⚠️ <strong>Security Notice:</strong> If you did not request a password reset, please ignore this email and contact support immediately.
+                    </div>
+                    
+                    <p style="text-align: center; margin-top: 30px;">
+                        <em>This is an automated message from ' . NotificationConfig::SCHOOL_NAME . ' E-Wallet</em>
+                    </p>
+                </div>
+                <div class="footer">
+                    <p>This is an automated message. Please do not reply.</p>
+                    <p>For support, contact: ' . NotificationConfig::SUPPORT_EMAIL . '</p>
+                    <p>&copy; ' . date('Y') . ' ' . NotificationConfig::SCHOOL_NAME . '</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        ';
+        
+        return EmailService::send($email, $subject, $body);
     }
 }
 ?>

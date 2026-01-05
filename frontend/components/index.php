@@ -68,11 +68,23 @@
             const response = await EWalletAPI.login(school_id, password);
 
             if (response.status === 'success') {
-                // Save session
-                EWalletAPI.saveSession(response.data);
-                
-                // Redirect to dashboard
-                window.location.href = 'dashboard.php';
+                // Check if admin or student
+                if (response.user_type === 'admin') {
+                    // Save admin session
+                    localStorage.setItem('admin_id', response.data.admin_id);
+                    localStorage.setItem('admin_username', response.data.username);
+                    localStorage.setItem('admin_role', response.data.role);
+                    localStorage.setItem('is_admin', 'true');
+                    
+                    // Redirect to admin dashboard
+                    window.location.href = 'admin-dashboard.php';
+                } else {
+                    // Save student session
+                    EWalletAPI.saveSession(response.data);
+                    
+                    // Redirect to student dashboard
+                    window.location.href = 'dashboard.php';
+                }
             } else {
                 // Show error
                 errorMsg.textContent = response.message;

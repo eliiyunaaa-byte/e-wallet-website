@@ -30,7 +30,7 @@
             Enter your School ID and we'll send a verification code to your registered email.
         </p>
 
-        <form action="verify.php" method="GET">
+        <form id="forgot-password-form">
             <div class="input-group">
                 <input type="text" name="school_id" id="school_id" placeholder="School ID" required>
             </div>
@@ -46,5 +46,40 @@
 
     </div>
 
+    <script src="api.js"></script>
+    <script>
+        document.getElementById('forgot-password-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const schoolId = document.getElementById('school_id').value;
+            const button = this.querySelector('button');
+            
+            button.disabled = true;
+            button.textContent = 'Sending OTP...';
+            
+            try {
+                const result = await EWalletAPI.requestPasswordReset(schoolId);
+                
+                if (result.status === 'success') {
+                    // Store school_id for verify page
+                    localStorage.setItem('reset_school_id', schoolId);
+                    
+                    alert('✅ ' + result.message + '\n\nThe code will expire in 15 minutes.');
+                    
+                    // Redirect to verify page
+                    window.location.href = 'verify.php';
+                } else {
+                    alert('❌ ' + result.message);
+                    button.disabled = false;
+                    button.textContent = 'Send Verification Code';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ An error occurred. Please try again.');
+                button.disabled = false;
+                button.textContent = 'Send Verification Code';
+            }
+        });
+    </script>
 </body>
 </html>

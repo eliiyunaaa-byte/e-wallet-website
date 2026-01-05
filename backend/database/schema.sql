@@ -68,12 +68,13 @@ CREATE TABLE cash_in_requests (
 CREATE TABLE password_resets (
     reset_id INT PRIMARY KEY AUTO_INCREMENT,
     student_id INT NOT NULL,
-    reset_token VARCHAR(255) UNIQUE NOT NULL,
-    otp_code VARCHAR(6),
-    is_used BOOLEAN DEFAULT FALSE,
+    reset_token VARCHAR(64) NULL COMMENT 'Unique token for security',
+    otp_code VARCHAR(6) NOT NULL COMMENT '6-digit verification code',
+    is_used BOOLEAN DEFAULT FALSE COMMENT 'Prevents OTP reuse',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    expires_at TIMESTAMP NULL,
-    FOREIGN KEY (student_id) REFERENCES students(student_id) ON DELETE CASCADE
+    expires_at TIMESTAMP NULL COMMENT 'OTP valid for 15 minutes',
+    FOREIGN KEY (student_id) REFERENCES students(student_id) ON DELETE CASCADE,
+    INDEX idx_otp_lookup (student_id, otp_code, is_used, expires_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =====================================================
@@ -162,11 +163,11 @@ INSERT INTO menu_items (vendor_id, item_name, price, category) VALUES
 (1, 'Pancit', 45.00, 'Main Course');
 
 -- Insert sample students (password for all: password123)
--- Plain text passwords for debugging
-INSERT INTO students (school_id, first_name, last_name, full_name, email, grade_section, password_hash, balance) VALUES
-('123456', 'Juan', 'Dela Cruz', 'Juan Dela Cruz', 'juan.delacruz@siena.edu.ph', '10-Eucharist Centered', 'password123', 1000.00),
-('123457', 'Maria', 'Santos', 'Maria Santos', 'maria.santos@siena.edu.ph', '11-Christ Centered', 'password123', 750.50),
-('123458', 'Pedro', 'Reyes', 'Pedro Reyes', 'pedro.reyes@siena.edu.ph', '10-Eucharist Centered', 'password123', 500.00);
+-- Plain text passwords for debugging - CHANGE TO BCRYPT IN PRODUCTION
+INSERT INTO students (school_id, first_name, last_name, full_name, email, phone, grade_section, password_hash, balance) VALUES
+('123456', 'Juan', 'Dela Cruz', 'Juan Dela Cruz', 'klalbaytar1913ant@student.fatima.edu.ph', '09518982328', '10-Eucharist Centered', 'password123', 1000.00),
+('123457', 'Maria', 'Santos', 'Maria Santos', 'maria.santos@siena.edu.ph', NULL, '11-Christ Centered', 'password123', 750.50),
+('123458', 'Pedro', 'Reyes', 'Pedro Reyes', 'pedro.reyes@siena.edu.ph', NULL, '10-Eucharist Centered', 'password123', 500.00);
 
 -- Insert sample transactions
 INSERT INTO transactions (student_id, transaction_type, amount, previous_balance, new_balance, location, item_name, transaction_date, transaction_time, status) VALUES

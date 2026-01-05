@@ -26,7 +26,11 @@
             Enter Verification Code
         </h2>
 
-        <form action="dashboard.php" method="GET" id="otp-form">
+        <p class="instruction-text" style="font-size: 14px; color: #666; text-align: center; margin-bottom: 20px;">
+            We've sent a 6-digit code to your email
+        </p>
+
+        <form id="otp-form">
             <div class="otp-container">
                 <input type="text" maxlength="1" class="otp-input" required>
                 <input type="text" maxlength="1" class="otp-input" required>
@@ -37,17 +41,66 @@
             </div>
 
             <div class="pt-4">
-                <button type="submit" class="login-btn">Verify</button>
+                <button type="submit" class="login-btn">Verify OTP</button>
             </div>
         </form>
 
         <p class="forgot-pass">
+            <a href="forgot-password.php">Resend Code</a> | 
             <a href="index.php">Back to Log In</a>
         </p>
 
     </div>
 
+    <script src="api.js"></script>
     <script>
+        // Check if school_id exists
+        const schoolId = localStorage.getItem('reset_school_id');
+        if (!schoolId) {
+            alert('⚠️ Session expired. Please start over.');
+            window.location.href = 'forgot-password.php';
+        }
+
+        // OTP Form submission
+        document.getElementById('otp-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Get OTP from all inputs
+            const inputs = document.querySelectorAll('.otp-input');
+            const otp = Array.from(inputs).map(input => input.value).join('');
+            
+            if (otp.length !== 6) {
+                alert('⚠️ Please enter all 6 digits');
+                return;
+            }
+            
+            const button = this.querySelector('button');
+            button.disabled = true;
+            button.textContent = 'Verifying...';
+            
+            try {
+                const result = await EWalletAPI.verifyOTP(schoolId, otp);
+                
+                if (result.status === 'success') {
+                    alert('✅ OTP verified! Please enter your new password.');
+                    // Redirect to reset password page
+                    window.location.href = 'reset-password.php';
+                } else {
+                    alert('❌ ' + result.message);
+                    button.disabled = false;
+                    button.textContent = 'Verify OTP';
+                    // Clear inputs
+                    inputs.forEach(input => input.value = '');
+                    inputs[0].focus();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ An error occurred. Please try again.');
+                button.disabled = false;
+                button.textContent = 'Verify OTP';
+            }
+        });
+
         // Automatically move to next input
         const inputs = document.querySelectorAll(".otp-input");
         inputs.forEach((input, index) => {

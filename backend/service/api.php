@@ -17,14 +17,21 @@ error_reporting(E_ALL);
 ini_set('display_errors', 0); // Don't show errors in output
 ini_set('log_errors', 1);
 
-$action = isset($_GET['action']) ? $_GET['action'] : '';
-
-// Include services
-require_once __DIR__ . '/../dbConfiguration/Database.php';
-require_once __DIR__ . '/../dbConfiguration/PayMongoConfig.php';
+// Include services FIRST (before any logic)
 require_once __DIR__ . '/AuthService.php';
 require_once __DIR__ . '/TransactionService.php';
 require_once __DIR__ . '/PayMongoService.php';
+require_once __DIR__ . '/../dbConfiguration/Database.php';
+require_once __DIR__ . '/../dbConfiguration/PayMongoConfig.php';
+
+// Type hints for IntelliSense (classes are loaded via require_once above)
+if (false) {
+    class AuthService {}
+    class TransactionService {}
+    class PayMongoService {}
+}
+
+$action = isset($_GET['action']) ? $_GET['action'] : '';
 
 // Get database connection
 try {
@@ -68,13 +75,25 @@ switch($action) {
         getWeeklySpending($conn);
         break;
     
+    case 'request_password_reset':
+        requestPasswordReset($conn);
+        break;
+    
+    case 'verify_otp':
+        verifyOTP($conn);
+        break;
+    
+    case 'reset_password':
+        resetPassword($conn);
+        break;
+    
     default:
         http_response_code(404);
         echo json_encode(['status' => 'error', 'message' => 'Action not found']);
 }
 
 // ============================================
-// FUNCTION: Handle Login
+// FUNCTION: Handle Login (Auto-detect Admin or Student)
 // ============================================
 function handleLogin($conn) {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -87,6 +106,14 @@ function handleLogin($conn) {
     $school_id = $data['school_id'] ?? null;
     $password = $data['password'] ?? null;
 
+    // First, try admin login
+    $adminResult = tryAdminLogin($conn, $school_id, $password);
+    if ($adminResult) {
+        echo json_encode($adminResult);
+        return;
+    }
+
+    // If not admin, try student login
     $auth = new AuthService($conn);
     $result = $auth->login($school_id, $password);
 
@@ -98,6 +125,56 @@ function handleLogin($conn) {
     }
 
     echo json_encode($result);
+}
+
+// ============================================
+// FUNCTION: Try Admin Login
+// ============================================
+function tryAdminLogin($conn, $username, $password) {
+    // Check if admin exists
+    $stmt = $conn->prepare("SELECT admin_id, username, password_hash, role FROM admin_users WHERE username = ? AND is_active = 1");
+    $stmt->bind_param("s", $username);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows === 0) {
+        $stmt->close();
+        return null; // Not an admin, continue to student login
+    }
+
+    $admin = $result->fetch_assoc();
+    $stmt->close();
+
+    // Verify password (plain text for debugging - use password_verify in production)
+    if ($admin['password_hash'] !== $password) {
+        return [
+            'status' => 'error',
+            'message' => 'Invalid admin credentials'
+        ];
+    }
+
+    // Update last login
+    $stmt = $conn->prepare("UPDATE admin_users SET last_login = NOW() WHERE admin_id = ?");
+    $stmt->bind_param("i", $admin['admin_id']);
+    $stmt->execute();
+    $stmt->close();
+
+    // Set admin session
+    $_SESSION['admin_id'] = $admin['admin_id'];
+    $_SESSION['admin_username'] = $admin['username'];
+    $_SESSION['admin_role'] = $admin['role'];
+    $_SESSION['is_admin'] = true;
+
+    return [
+        'status' => 'success',
+        'message' => 'Admin login successful',
+        'user_type' => 'admin',
+        'data' => [
+            'admin_id' => $admin['admin_id'],
+            'username' => $admin['username'],
+            'role' => $admin['role']
+        ]
+    ];
 }
 
 // ============================================
@@ -118,6 +195,7 @@ function getBalance($conn) {
         return;
     }
 
+    /** @var TransactionService $trans */
     $trans = new TransactionService($conn);
     echo json_encode($trans->getBalance($student_id));
 }
@@ -142,6 +220,7 @@ function getTransactions($conn) {
         return;
     }
 
+    /** @var TransactionService $trans */
     $trans = new TransactionService($conn);
     echo json_encode($trans->getTransactions($student_id, $limit, $offset));
 }
@@ -168,6 +247,7 @@ function processPurchase($conn) {
         return;
     }
 
+    /** @var TransactionService $trans */
     $trans = new TransactionService($conn);
     echo json_encode($trans->processPurchase($student_id, $amount, $item_name, $location));
 }
@@ -193,6 +273,7 @@ function requestCashIn($conn) {
         return;
     }
 
+    /** @var TransactionService $trans */
     $trans = new TransactionService($conn);
     echo json_encode($trans->requestCashIn($student_id, $amount, $reference_number));
 }
@@ -215,6 +296,7 @@ function getWeeklySpending($conn) {
         return;
     }
 
+    /** @var TransactionService $trans */
     $trans = new TransactionService($conn);
     echo json_encode($trans->getWeeklySpending($student_id));
 }
@@ -247,7 +329,82 @@ function createPaymentLink($conn) {
     }
 
     // Create payment link via PayMongo
+    /** @var array $result */
     $result = PayMongoService::createPaymentLink($amount, $student_id);
+    echo json_encode($result);
+}
+
+// ============================================
+// FUNCTION: Request Password Reset (Send OTP)
+// ============================================
+function requestPasswordReset($conn) {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        http_response_code(400);
+        echo json_encode(['status' => 'error', 'message' => 'POST request required']);
+        return;
+    }
+
+    $data = json_decode(file_get_contents("php://input"), true);
+    $school_id = $data['school_id'] ?? null;
+
+    if (!$school_id) {
+        http_response_code(400);
+        echo json_encode(['status' => 'error', 'message' => 'School ID required']);
+        return;
+    }
+
+    $auth = new AuthService($conn);
+    $result = $auth->requestPasswordReset($school_id);
+    echo json_encode($result);
+}
+
+// ============================================
+// FUNCTION: Verify OTP
+// ============================================
+function verifyOTP($conn) {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        http_response_code(400);
+        echo json_encode(['status' => 'error', 'message' => 'POST request required']);
+        return;
+    }
+
+    $data = json_decode(file_get_contents("php://input"), true);
+    $school_id = $data['school_id'] ?? null;
+    $otp = $data['otp'] ?? null;
+
+    if (!$school_id || !$otp) {
+        http_response_code(400);
+        echo json_encode(['status' => 'error', 'message' => 'School ID and OTP required']);
+        return;
+    }
+
+    $auth = new AuthService($conn);
+    $result = $auth->verifyOTP($school_id, $otp);
+    echo json_encode($result);
+}
+
+// ============================================
+// FUNCTION: Reset Password
+// ============================================
+function resetPassword($conn) {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        http_response_code(400);
+        echo json_encode(['status' => 'error', 'message' => 'POST request required']);
+        return;
+    }
+
+    $data = json_decode(file_get_contents("php://input"), true);
+    $school_id = $data['school_id'] ?? null;
+    $new_password = $data['new_password'] ?? null;
+
+    if (!$school_id || !$new_password) {
+        http_response_code(400);
+        echo json_encode(['status' => 'error', 'message' => 'School ID and new password required']);
+        return;
+    }
+
+    $auth = new AuthService($conn);
+    $result = $auth->resetPassword($school_id, $new_password);
     echo json_encode($result);
 }
 ?>
