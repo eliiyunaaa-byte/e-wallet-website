@@ -17,7 +17,21 @@ error_reporting(E_ALL);
 ini_set('display_errors', 0); // Don't show errors in output
 ini_set('log_errors', 1);
 
-// Include services FIRST (before any logic)
+// Set error handler to catch fatal errors
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    http_response_code(500);
+    echo json_encode([
+        'status' => 'error',
+        'message' => 'Server error: ' . $errstr . ' in ' . basename($errfile) . ':' . $errline
+    ]);
+    exit;
+});
+
+$action = isset($_GET['action']) ? $_GET['action'] : '';
+
+// Include services
+require_once __DIR__ . '/../dbConfiguration/Database.php';
+require_once __DIR__ . '/../dbConfiguration/PayMongoConfig.php';
 require_once __DIR__ . '/AuthService.php';
 require_once __DIR__ . '/TransactionService.php';
 require_once __DIR__ . '/PayMongoService.php';
@@ -34,9 +48,7 @@ if (false) {
 $action = isset($_GET['action']) ? $_GET['action'] : '';
 
 // Get database connection
-try {
-    $conn = include __DIR__ . '/../dbConfiguration/Database.php';
-} catch (Exception $e) {
+if (!isset($conn) || !$conn) {
     http_response_code(500);
     echo json_encode([
         'status' => 'error',
@@ -96,85 +108,43 @@ switch($action) {
 // FUNCTION: Handle Login (Auto-detect Admin or Student)
 // ============================================
 function handleLogin($conn) {
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        http_response_code(400);
-        echo json_encode(['status' => 'error', 'message' => 'POST request required']);
-        return;
-    }
+    try {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'POST request required']);
+            return;
+        }
 
-    $data = json_decode(file_get_contents("php://input"), true);
-    $school_id = $data['school_id'] ?? null;
-    $password = $data['password'] ?? null;
+        $input = file_get_contents("php://input");
+        $data = json_decode($input, true);
+        
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'Invalid JSON in request body']);
+            return;
+        }
+        
+        $school_id = $data['school_id'] ?? null;
+        $password = $data['password'] ?? null;
 
-    // First, try admin login
-    $adminResult = tryAdminLogin($conn, $school_id, $password);
-    if ($adminResult) {
-        echo json_encode($adminResult);
-        return;
-    }
+        $auth = new AuthService($conn);
+        $result = $auth->login($school_id, $password);
 
-    // If not admin, try student login
-    $auth = new AuthService($conn);
-    $result = $auth->login($school_id, $password);
+        if ($result['status'] === 'success') {
+            // Set session
+            $_SESSION['student_id'] = $result['data']['student_id'];
+            $_SESSION['school_id'] = $result['data']['school_id'];
+            $_SESSION['name'] = $result['data']['name'];
+        }
 
-    if ($result['status'] === 'success') {
-        // Set session
-        $_SESSION['student_id'] = $result['data']['student_id'];
-        $_SESSION['school_id'] = $result['data']['school_id'];
-        $_SESSION['name'] = $result['data']['name'];
-    }
-
-    echo json_encode($result);
-}
-
-// ============================================
-// FUNCTION: Try Admin Login
-// ============================================
-function tryAdminLogin($conn, $username, $password) {
-    // Check if admin exists
-    $stmt = $conn->prepare("SELECT admin_id, username, password_hash, role FROM admin_users WHERE username = ? AND is_active = 1");
-    $stmt->bind_param("s", $username);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    if ($result->num_rows === 0) {
-        $stmt->close();
-        return null; // Not an admin, continue to student login
-    }
-
-    $admin = $result->fetch_assoc();
-    $stmt->close();
-
-    // Verify password (plain text for debugging - use password_verify in production)
-    if ($admin['password_hash'] !== $password) {
-        return [
+        echo json_encode($result);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode([
             'status' => 'error',
-            'message' => 'Invalid admin credentials'
-        ];
+            'message' => 'Server error: ' . $e->getMessage()
+        ]);
     }
-
-    // Update last login
-    $stmt = $conn->prepare("UPDATE admin_users SET last_login = NOW() WHERE admin_id = ?");
-    $stmt->bind_param("i", $admin['admin_id']);
-    $stmt->execute();
-    $stmt->close();
-
-    // Set admin session
-    $_SESSION['admin_id'] = $admin['admin_id'];
-    $_SESSION['admin_username'] = $admin['username'];
-    $_SESSION['admin_role'] = $admin['role'];
-    $_SESSION['is_admin'] = true;
-
-    return [
-        'status' => 'success',
-        'message' => 'Admin login successful',
-        'user_type' => 'admin',
-        'data' => [
-            'admin_id' => $admin['admin_id'],
-            'username' => $admin['username'],
-            'role' => $admin['role']
-        ]
-    ];
 }
 
 // ============================================
