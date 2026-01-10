@@ -34,8 +34,8 @@ class PayMongoService {
                             ]
                         ],
                         'payment_method_types' => ['gcash'],
-                        'success_url' => 'http://localhost/e-wallet-website/e-wallet-website/frontend/components/dashboard.php?payment=success',
-                        'cancel_url' => 'http://localhost/e-wallet-website/e-wallet-website/frontend/components/cashin.php?payment=cancelled',
+                        'success_url' => 'https://deeppink-donkey-255506.hostingersite.com/frontend/components/dashboard.php?payment=success',
+                        'cancel_url' => 'https://deeppink-donkey-255506.hostingersite.com/frontend/components/cashin.php?payment=cancelled',
                         'description' => 'Student ID: ' . $student_id . ' | Amount: ₱' . number_format($amount, 2),
                         'metadata' => [
                             'student_id' => $student_id,

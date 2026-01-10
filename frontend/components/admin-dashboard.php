@@ -167,7 +167,7 @@
 
         async function loadStudents() {
             try {
-                const response = await fetch('/e-wallet-website/e-wallet-website/backend/service/admin-api.php?action=get_students');
+                const response = await fetch('/backend/service/admin-api.php?action=get_students');
                 const result = await response.json();
 
                 if (result.status === 'success') {
@@ -224,7 +224,7 @@
 
         async function editStudent(studentId) {
             try {
-                const response = await fetch(`/e-wallet-website/e-wallet-website/backend/service/admin-api.php?action=get_student&student_id=${studentId}`);
+                const response = await fetch(`/backend/service/admin-api.php?action=get_student&student_id=${studentId}`);
                 const result = await response.json();
 
                 if (result.status === 'success') {
@@ -253,7 +253,7 @@
             }
 
             try {
-                const response = await fetch('/e-wallet-website/e-wallet-website/backend/service/admin-api.php?action=delete_student', {
+                const response = await fetch('/backend/service/admin-api.php?action=delete_student', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ student_id: studentId })
@@ -295,7 +295,7 @@
             const action = studentId ? 'update_student' : 'create_student';
 
             try {
-                const response = await fetch(`/e-wallet-website/e-wallet-website/backend/service/admin-api.php?action=${action}`, {
+                const response = await fetch(`/backend/service/admin-api.php?action=${action}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(formData)

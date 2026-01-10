@@ -113,7 +113,7 @@
             
             // Process cash-in (simulate webhook)
             try {
-                const response = await fetch(`../../backend/webhooks/manual_cashin.php?student_id=${student_id}&amount=${amount}`);
+                const response = await fetch(`/backend/webhooks/manual_cashin.php?student_id=${student_id}&amount=${amount}`);
                 const result = await response.json();
                 
                 console.log('💰 CASH-IN RESPONSE:', result);

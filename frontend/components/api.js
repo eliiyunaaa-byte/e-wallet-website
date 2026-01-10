@@ -1,7 +1,7 @@
 // API Helper for E-Wallet Frontend
 // All API calls go through this helper
 
-const API_BASE_URL = '/e-wallet-website/e-wallet-website/backend/service/api.php';
+const API_BASE_URL = '/backend/service/api.php';
 
 class EWalletAPI {
     /**

@@ -1,0 +1,23 @@
+# Deny direct access to PHP files
+<Files "*.php">
+    Order Deny,Allow
+    Deny from all
+</Files>
+
+# Allow API endpoints
+<Files "api.php">
+    Allow from all
+</Files>
+
+<Files "admin-api.php">
+    Allow from all
+</Files>
+
+# Allow webhook
+<Files "paymongo_webhook.php">
+    Allow from all
+</Files>
+
+<Files "manual_cashin.php">
+    Allow from all
+</Files>
